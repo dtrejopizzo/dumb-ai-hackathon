@@ -83,7 +83,6 @@ To deploy the AI agent on DigitalOcean's Gradient AI Platform:
 
 ## Project Structure
 
-\`\`\`
 ├── app/
 │   ├── api/analyze/          # Replicate API integration
 │   ├── session/[id]/         # Therapy report display
@@ -95,7 +94,6 @@ To deploy the AI agent on DigitalOcean's Gradient AI Platform:
 ├── scripts/
 │   └── deploy_do_agent.py    # DigitalOcean agent deployment
 └── README.md
-\`\`\`
 
 ## Hackathon Submission
 
