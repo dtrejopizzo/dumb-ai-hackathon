@@ -49,7 +49,7 @@ TherapyForDogs.ai is an absurdly professional AI therapist service that provides
 
 5. Open [http://localhost:3000](http://localhost:3000)
 
-## DigitalOcean Agent Deployment (Optional)
+## DigitalOcean Agent Deployment
 
 To deploy the AI agent on DigitalOcean's Gradient AI Platform:
 
@@ -80,31 +80,6 @@ To deploy the AI agent on DigitalOcean's Gradient AI Platform:
    - Treatment Recommendations (training tips, lifestyle changes)
    - Prognosis (outlook for behavioral health)
 4. **Results**: User receives a professional-looking therapy report
-
-## Project Structure
-
-├── app/
-│   ├── api/analyze/          # Replicate API integration
-│   ├── session/[id]/         # Therapy report display
-│   └── page.tsx              # Landing page
-├── components/
-│   ├── upload-section.tsx    # Photo upload interface
-│   ├── how-it-works.tsx      # Feature explanation
-│   └── testimonials.tsx      # Success stories
-├── scripts/
-│   └── deploy_do_agent.py    # DigitalOcean agent deployment
-└── README.md
-
-## Hackathon Submission
-
-**Category**: Best use of DigitalOcean
-
-**Why This Project Wins**:
-- ✅ Uses DigitalOcean Gradient AI Platform for agent deployment
-- ✅ Perfectly "dumb" concept: AI therapy for dogs
-- ✅ Actually functional and well-designed
-- ✅ Demonstrates real AI capabilities in a hilarious way
-- ✅ Professional execution of an absurd idea
 
 ## Disclaimer
 
