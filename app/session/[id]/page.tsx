@@ -40,26 +40,13 @@ export default function SessionPage({ params }: PageProps) {
           setSessionData(data)
           setLoading(false)
           return
+        } else {
+          console.error("[v0] Session not found")
         }
       } catch (error) {
-        console.log("[v0] API fetch failed, trying URL decode:", error)
+        console.error("[v0] Failed to load session:", error)
       }
 
-      if (id.includes("_eyJ")) {
-        try {
-          const parts = id.split("_")
-          const encodedPart = parts.slice(3).join("_") // Everything after session_timestamp_random
-          const decoded = Buffer.from(encodedPart, "base64").toString("utf-8")
-          const data = JSON.parse(decoded) as SessionData
-          setSessionData(data)
-          setLoading(false)
-          return
-        } catch (error) {
-          console.error("[v0] Failed to decode session from URL:", error)
-        }
-      }
-
-      // If all else fails, show not found
       setLoading(false)
     }
 

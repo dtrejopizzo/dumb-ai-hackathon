@@ -22,6 +22,9 @@ if (isSpacesConfigured) {
   })
 }
 
+// In-memory session storage (fallback when Spaces is not configured)
+const sessionStore = new Map<string, SessionData>()
+
 const BUCKET_NAME = process.env.DO_SPACES_BUCKET || "therapyfordogs"
 
 export interface SessionData {
@@ -32,7 +35,8 @@ export interface SessionData {
 
 export async function storeSession(sessionId: string, data: SessionData): Promise<void> {
   if (!s3Client) {
-    console.warn("[v0] DigitalOcean Spaces not configured, skipping storage")
+    console.warn("[v0] DigitalOcean Spaces not configured, using in-memory storage")
+    sessionStore.set(sessionId, data)
     return
   }
 
@@ -48,15 +52,15 @@ export async function storeSession(sessionId: string, data: SessionData): Promis
     await s3Client.send(command)
     console.log("[v0] Session stored successfully in DigitalOcean Spaces")
   } catch (error) {
-    console.error("[v0] Failed to store session in Spaces:", error)
-    throw error
+    console.error("[v0] Failed to store session in Spaces, falling back to in-memory:", error)
+    sessionStore.set(sessionId, data)
   }
 }
 
 export async function getSession(sessionId: string): Promise<SessionData | null> {
   if (!s3Client) {
-    console.warn("[v0] DigitalOcean Spaces not configured")
-    return null
+    console.warn("[v0] DigitalOcean Spaces not configured, using in-memory storage")
+    return sessionStore.get(sessionId) || null
   }
 
   try {
@@ -69,13 +73,13 @@ export async function getSession(sessionId: string): Promise<SessionData | null>
     const body = await response.Body?.transformToString()
 
     if (!body) {
-      return null
+      return sessionStore.get(sessionId) || null
     }
 
     return JSON.parse(body) as SessionData
   } catch (error) {
-    console.error("[v0] Failed to retrieve session:", error)
-    return null
+    console.error("[v0] Failed to retrieve session from Spaces, trying in-memory:", error)
+    return sessionStore.get(sessionId) || null
   }
 }
 

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Replicate from "replicate"
-import { storeSession, isStorageConfigured } from "@/lib/storage"
+import { storeSession } from "@/lib/storage"
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -79,38 +79,17 @@ Be creative, empathetic, and maintain a professional therapeutic tone while bein
     // Generate a unique session ID
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
-    // Store the analysis result
     const analysisText = Array.isArray(output) ? output.join("") : output
 
-    if (isStorageConfigured()) {
-      try {
-        await storeSession(sessionId, {
-          analysis: analysisText,
-          imageUrl: dataUrl,
-          timestamp: new Date().toISOString(),
-        })
-        console.log("[v0] Session stored successfully in DigitalOcean Spaces")
-        return NextResponse.json({ sessionId })
-      } catch (storageError) {
-        console.error("[v0] Storage failed:", storageError)
-        // Fall through to URL encoding
-      }
-    } else {
-      console.warn("[v0] DigitalOcean Spaces not configured, using URL encoding fallback")
-    }
-
-    const sessionData = {
+    await storeSession(sessionId, {
       analysis: analysisText,
-      imageUrl: dataUrl.substring(0, 50000), // Limit image size to prevent URI_TOO_LONG
+      imageUrl: dataUrl,
       timestamp: new Date().toISOString(),
-    }
-    const encodedData = Buffer.from(JSON.stringify(sessionData)).toString("base64")
-    const fallbackSessionId = `${sessionId}_${encodedData}`
-
-    return NextResponse.json({
-      sessionId: fallbackSessionId,
-      warning: "DigitalOcean Spaces not configured. Configure DO_SPACES_* environment variables for production use.",
     })
+
+    console.log("[v0] Session stored successfully")
+
+    return NextResponse.json({ sessionId })
   } catch (error) {
     console.error("[v0] Analysis error:", error)
     return NextResponse.json(
