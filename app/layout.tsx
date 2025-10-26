@@ -8,9 +8,9 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "TherapyForThings.ai - Professional Counseling for Inanimate Objects",
+  title: "TherapyForDogs.ai - Professional Behavioral Therapy for Dogs",
   description:
-    "AI-powered psychological evaluation and therapy for your everyday objects. Because even your stapler deserves emotional support.",
+    "AI-powered psychological evaluation and behavioral therapy for your canine companion. Expert guidance to help your dog live their best life.",
   generator: "v0.app",
 }
 
