@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Replicate from "replicate"
-import { storeSession } from "@/lib/storage"
+import { storeSession, isStorageConfigured } from "@/lib/storage"
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -8,6 +8,8 @@ const replicate = new Replicate({
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("[v0] Starting image analysis")
+
     // Parse the uploaded image from FormData
     const formData = await req.formData()
     const image = formData.get("image") as File
@@ -16,12 +18,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 })
     }
 
+    console.log("[v0] Image received, converting to base64")
+
     // Convert image to base64 data URL
     const bytes = await image.arrayBuffer()
     const buffer = Buffer.from(bytes)
     const base64 = buffer.toString("base64")
     const mimeType = image.type
     const dataUrl = `data:${mimeType};base64,${base64}`
+
+    console.log("[v0] Calling Replicate API")
 
     // Use yorickvp/llava-13b which is a verified working vision model on Replicate
     const output = await replicate.run(
@@ -68,23 +74,48 @@ Be creative, empathetic, and maintain a professional therapeutic tone while bein
       },
     )
 
+    console.log("[v0] Replicate analysis complete")
+
     // Generate a unique session ID
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
     // Store the analysis result
     const analysisText = Array.isArray(output) ? output.join("") : output
 
-    await storeSession(sessionId, {
+    if (isStorageConfigured()) {
+      try {
+        await storeSession(sessionId, {
+          analysis: analysisText,
+          imageUrl: dataUrl,
+          timestamp: new Date().toISOString(),
+        })
+        console.log("[v0] Session stored successfully in DigitalOcean Spaces")
+        return NextResponse.json({ sessionId })
+      } catch (storageError) {
+        console.error("[v0] Storage failed:", storageError)
+        // Fall through to URL encoding
+      }
+    } else {
+      console.warn("[v0] DigitalOcean Spaces not configured, using URL encoding fallback")
+    }
+
+    const sessionData = {
       analysis: analysisText,
-      imageUrl: dataUrl,
+      imageUrl: dataUrl.substring(0, 50000), // Limit image size to prevent URI_TOO_LONG
       timestamp: new Date().toISOString(),
-    })
+    }
+    const encodedData = Buffer.from(JSON.stringify(sessionData)).toString("base64")
+    const fallbackSessionId = `${sessionId}_${encodedData}`
 
     return NextResponse.json({
-      sessionId,
+      sessionId: fallbackSessionId,
+      warning: "DigitalOcean Spaces not configured. Configure DO_SPACES_* environment variables for production use.",
     })
   } catch (error) {
-    console.error("Analysis error:", error)
-    return NextResponse.json({ error: "Failed to analyze image. Please try again." }, { status: 500 })
+    console.error("[v0] Analysis error:", error)
+    return NextResponse.json(
+      { error: `Failed to analyze image: ${error instanceof Error ? error.message : "Unknown error"}` },
+      { status: 500 },
+    )
   }
 }

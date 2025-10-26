@@ -1,14 +1,26 @@
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
 
-// Initialize DigitalOcean Spaces client (S3-compatible)
-const s3Client = new S3Client({
-  endpoint: `https://${process.env.DO_SPACES_REGION}.digitaloceanspaces.com`,
-  region: process.env.DO_SPACES_REGION || "nyc3",
-  credentials: {
-    accessKeyId: process.env.DO_SPACES_KEY || "",
-    secretAccessKey: process.env.DO_SPACES_SECRET || "",
-  },
-})
+// Check if DigitalOcean Spaces is configured
+const isSpacesConfigured = Boolean(
+  process.env.DO_SPACES_KEY &&
+    process.env.DO_SPACES_SECRET &&
+    process.env.DO_SPACES_BUCKET &&
+    process.env.DO_SPACES_REGION,
+)
+
+// Initialize DigitalOcean Spaces client (S3-compatible) only if configured
+let s3Client: S3Client | null = null
+
+if (isSpacesConfigured) {
+  s3Client = new S3Client({
+    endpoint: `https://${process.env.DO_SPACES_REGION}.digitaloceanspaces.com`,
+    region: process.env.DO_SPACES_REGION || "nyc3",
+    credentials: {
+      accessKeyId: process.env.DO_SPACES_KEY!,
+      secretAccessKey: process.env.DO_SPACES_SECRET!,
+    },
+  })
+}
 
 const BUCKET_NAME = process.env.DO_SPACES_BUCKET || "therapyfordogs"
 
@@ -19,18 +31,34 @@ export interface SessionData {
 }
 
 export async function storeSession(sessionId: string, data: SessionData): Promise<void> {
-  const command = new PutObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: `sessions/${sessionId}.json`,
-    Body: JSON.stringify(data),
-    ContentType: "application/json",
-    ACL: "private",
-  })
+  if (!s3Client) {
+    console.warn("[v0] DigitalOcean Spaces not configured, skipping storage")
+    return
+  }
 
-  await s3Client.send(command)
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: `sessions/${sessionId}.json`,
+      Body: JSON.stringify(data),
+      ContentType: "application/json",
+      ACL: "private",
+    })
+
+    await s3Client.send(command)
+    console.log("[v0] Session stored successfully in DigitalOcean Spaces")
+  } catch (error) {
+    console.error("[v0] Failed to store session in Spaces:", error)
+    throw error
+  }
 }
 
 export async function getSession(sessionId: string): Promise<SessionData | null> {
+  if (!s3Client) {
+    console.warn("[v0] DigitalOcean Spaces not configured")
+    return null
+  }
+
   try {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
@@ -46,7 +74,11 @@ export async function getSession(sessionId: string): Promise<SessionData | null>
 
     return JSON.parse(body) as SessionData
   } catch (error) {
-    console.error("Failed to retrieve session:", error)
+    console.error("[v0] Failed to retrieve session:", error)
     return null
   }
+}
+
+export function isStorageConfigured(): boolean {
+  return isSpacesConfigured
 }

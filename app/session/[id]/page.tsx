@@ -8,16 +8,74 @@ import { Button } from "@/components/ui/button"
 import { Brain, Calendar, FileText, Home, Download } from "lucide-react"
 import Link from "next/link"
 import { ChatInterface } from "@/components/chat-interface"
-import { getSession } from "@/lib/storage"
+import { useEffect, useState } from "react"
 
 interface PageProps {
   params: Promise<{ id: string }>
 }
 
-export default async function SessionPage({ params }: PageProps) {
-  const { id } = await params
+interface SessionData {
+  analysis: string
+  imageUrl: string
+  timestamp: string
+}
 
-  const sessionData = await getSession(id)
+export default function SessionPage({ params }: PageProps) {
+  const [sessionData, setSessionData] = useState<SessionData | null>(null)
+  const [sessionId, setSessionId] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadSession() {
+      const resolvedParams = await params
+      const id = resolvedParams.id
+      setSessionId(id)
+
+      console.log("[v0] Loading session:", id)
+
+      try {
+        const response = await fetch(`/api/session/${id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setSessionData(data)
+          setLoading(false)
+          return
+        }
+      } catch (error) {
+        console.log("[v0] API fetch failed, trying URL decode:", error)
+      }
+
+      if (id.includes("_eyJ")) {
+        try {
+          const parts = id.split("_")
+          const encodedPart = parts.slice(3).join("_") // Everything after session_timestamp_random
+          const decoded = Buffer.from(encodedPart, "base64").toString("utf-8")
+          const data = JSON.parse(decoded) as SessionData
+          setSessionData(data)
+          setLoading(false)
+          return
+        } catch (error) {
+          console.error("[v0] Failed to decode session from URL:", error)
+        }
+      }
+
+      // If all else fails, show not found
+      setLoading(false)
+    }
+
+    loadSession()
+  }, [params])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Brain className="mx-auto h-12 w-12 animate-pulse text-primary" />
+          <p className="mt-4 text-muted-foreground">Loading session...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!sessionData) {
     notFound()
@@ -78,7 +136,9 @@ export default async function SessionPage({ params }: PageProps) {
                 <div className="flex items-center gap-2 text-sm">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Session ID:</span>
-                  <span className="font-mono text-xs text-foreground">{id.split("_").slice(0, 3).join("_")}</span>
+                  <span className="font-mono text-xs text-foreground">
+                    {sessionId.split("_").slice(0, 3).join("_")}
+                  </span>
                 </div>
               </div>
 
