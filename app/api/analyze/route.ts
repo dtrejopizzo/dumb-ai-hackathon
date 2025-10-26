@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import Replicate from "replicate"
+import { storeSession } from "@/lib/storage"
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -73,16 +74,14 @@ Be creative, empathetic, and maintain a professional therapeutic tone while bein
     // Store the analysis result
     const analysisText = Array.isArray(output) ? output.join("") : output
 
-    const encodedAnalysis = Buffer.from(
-      JSON.stringify({
-        analysis: analysisText,
-        imageUrl: dataUrl,
-        timestamp: new Date().toISOString(),
-      }),
-    ).toString("base64")
+    await storeSession(sessionId, {
+      analysis: analysisText,
+      imageUrl: dataUrl,
+      timestamp: new Date().toISOString(),
+    })
 
     return NextResponse.json({
-      sessionId: `${sessionId}_${encodedAnalysis}`,
+      sessionId,
     })
   } catch (error) {
     console.error("Analysis error:", error)

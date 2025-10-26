@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import OpenAI from "openai"
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,6 +11,9 @@ export async function POST(request: NextRequest) {
     if (!DO_AGENT_ENDPOINT || !DO_API_TOKEN) {
       throw new Error("DigitalOcean credentials not configured")
     }
+
+    // DigitalOcean agents require the /api/v1/ prefix for OpenAI-compatible endpoints
+    const agentUrl = `${DO_AGENT_ENDPOINT}/api/v1/chat/completions`
 
     // System prompt that includes the behavioral report context
     const systemPrompt = `Eres un terapista canino profesional y empático. Has realizado una evaluación comportamental de un perro y ahora estás teniendo una sesión de seguimiento con el dueño.
@@ -30,31 +32,41 @@ Responde en español de manera conversacional y amigable. Mantén tus respuestas
 
     // Prepare messages for the API
     const apiMessages = [
-      { role: "system" as const, content: systemPrompt },
+      { role: "system", content: systemPrompt },
       ...messages.map((msg: { role: string; content: string }) => ({
-        role: msg.role as "user" | "assistant",
+        role: msg.role,
         content: msg.content,
       })),
     ]
 
-    console.log("[v0] Calling DigitalOcean agent with", apiMessages.length, "messages")
+    console.log("[v0] Calling DigitalOcean agent at:", agentUrl)
+    console.log("[v0] With", apiMessages.length, "messages")
 
-    const client = new OpenAI({
-      baseURL: DO_AGENT_ENDPOINT,
-      apiKey: DO_API_TOKEN,
+    const response = await fetch(agentUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${DO_API_TOKEN}`,
+      },
+      body: JSON.stringify({
+        messages: apiMessages,
+        model: "llama3.3-70b-instruct",
+        temperature: 0.7,
+        max_tokens: 500,
+      }),
     })
 
-    const response = await client.chat.completions.create({
-      model: "n/a", // Model is handled by DigitalOcean
-      messages: apiMessages,
-      temperature: 0.7,
-      max_tokens: 500,
-    })
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("[v0] DigitalOcean API error:", response.status, errorText)
+      throw new Error(`DigitalOcean API error: ${response.status}`)
+    }
 
+    const data = await response.json()
     console.log("[v0] Received response from DigitalOcean")
 
     return NextResponse.json({
-      message: response.choices[0].message.content,
+      message: data.choices[0].message.content,
     })
   } catch (error) {
     console.error("[v0] Chat error:", error)

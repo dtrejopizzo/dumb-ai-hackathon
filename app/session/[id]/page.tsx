@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Brain, Calendar, FileText, Home, Download } from "lucide-react"
 import Link from "next/link"
 import { ChatInterface } from "@/components/chat-interface"
+import { getSession } from "@/lib/storage"
 
 interface PageProps {
   params: Promise<{ id: string }>
@@ -16,16 +17,9 @@ interface PageProps {
 export default async function SessionPage({ params }: PageProps) {
   const { id } = await params
 
-  // Decode the session data from the ID
-  let sessionData
-  try {
-    // Extract the encoded analysis from the session ID
-    const parts = id.split("_")
-    const encodedAnalysis = parts[parts.length - 1]
-    const decoded = Buffer.from(encodedAnalysis, "base64").toString()
-    sessionData = JSON.parse(decoded)
-  } catch (error) {
-    console.error("Failed to decode session:", error)
+  const sessionData = await getSession(id)
+
+  if (!sessionData) {
     notFound()
   }
 
